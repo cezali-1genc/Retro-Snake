@@ -3,6 +3,7 @@ package com.example.audio
 import android.media.AudioAttributes
 import android.media.AudioFormat
 import android.media.AudioTrack
+import com.example.model.MusicStyle
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -11,9 +12,9 @@ import kotlin.math.PI
 import kotlin.math.sin
 
 /**
- * Procedural 8-Bit Retro Chiptune Background Music Player.
- * Generates a seamless 4-bar arcade chiptune loop (lead pulse, octave bass, and 8-bit percussion)
- * in pure PCM with zero external audio files, integrating directly with user volume & mute controls.
+ * Multi-Track Procedural Arcade Music Player.
+ * Supports 3 distinct loopable soundtracks (Retro Arcade, Electronic, Neon Cyber)
+ * generated cleanly in PCM with zero copyright issues and independent volume/mute control.
  */
 class RetroMusicPlayer {
 
@@ -21,13 +22,16 @@ class RetroMusicPlayer {
     private val lock = Any()
 
     private var track: AudioTrack? = null
-    private var pcmData: ShortArray? = null
+    private val pcmCache = mutableMapOf<MusicStyle, ShortArray>()
+
+    @Volatile
+    private var currentStyle: MusicStyle = MusicStyle.RETRO_ARCADE
 
     @Volatile
     private var isEnabled: Boolean = true
 
     @Volatile
-    private var volume: Float = 0.8f
+    private var volume: Float = 0.7f
 
     @Volatile
     private var shouldPlay: Boolean = false
@@ -36,32 +40,46 @@ class RetroMusicPlayer {
     private var isReleased: Boolean = false
 
     init {
-        // Pre-render the chiptune loop asynchronously so game start is instantaneous
+        preloadStyle(MusicStyle.RETRO_ARCADE)
+    }
+
+    private fun preloadStyle(style: MusicStyle) {
         scope.launch {
-            val generated = generateChiptuneLoop()
+            val generated = generateLoopForStyle(style)
             synchronized(lock) {
                 if (isReleased) return@synchronized
-                pcmData = generated
-                if (shouldPlay && isEnabled && volume > 0.01f) {
+                pcmCache[style] = generated
+                if (style == currentStyle && shouldPlay && isEnabled && volume > 0.01f) {
                     ensureTrackAndPlayLocked()
                 }
             }
         }
     }
 
-    fun updateSettings(enabled: Boolean, newVolume: Float) {
+    fun updateSettings(enabled: Boolean, newVolume: Float, style: MusicStyle = currentStyle) {
         val clampedVol = newVolume.coerceIn(0f, 1f)
+        val styleChanged: Boolean
         synchronized(lock) {
+            styleChanged = style != currentStyle
+            currentStyle = style
             isEnabled = enabled
             volume = clampedVol
             if (isReleased) return
-            val activeTrack = track
+
+            if (styleChanged) {
+                releaseTrackOnlyLocked()
+            }
+
             if (!isEnabled || volume <= 0.01f) {
-                pauseTrackLocked(activeTrack)
+                pauseTrackLocked(track)
             } else {
-                applyVolumeLocked(activeTrack)
-                if (shouldPlay) {
-                    ensureTrackAndPlayLocked()
+                if (!pcmCache.containsKey(style)) {
+                    preloadStyle(style)
+                } else {
+                    applyVolumeLocked(track)
+                    if (shouldPlay) {
+                        ensureTrackAndPlayLocked()
+                    }
                 }
             }
         }
@@ -71,7 +89,11 @@ class RetroMusicPlayer {
         synchronized(lock) {
             shouldPlay = true
             if (isReleased || !isEnabled || volume <= 0.01f) return
-            ensureTrackAndPlayLocked()
+            if (!pcmCache.containsKey(currentStyle)) {
+                preloadStyle(currentStyle)
+            } else {
+                ensureTrackAndPlayLocked()
+            }
         }
     }
 
@@ -92,7 +114,6 @@ class RetroMusicPlayer {
                 }
                 activeTrack.setPlaybackHeadPosition(0)
             } catch (_: Exception) {
-                // Safe fallback
             }
         }
     }
@@ -101,19 +122,22 @@ class RetroMusicPlayer {
         synchronized(lock) {
             isReleased = true
             shouldPlay = false
-            try {
-                track?.stop()
-                track?.release()
-            } catch (_: Exception) {
-                // Safe fallback
-            }
-            track = null
-            pcmData = null
+            releaseTrackOnlyLocked()
+            pcmCache.clear()
         }
     }
 
+    private fun releaseTrackOnlyLocked() {
+        try {
+            track?.stop()
+            track?.release()
+        } catch (_: Exception) {
+        }
+        track = null
+    }
+
     private fun ensureTrackAndPlayLocked() {
-        val data = pcmData ?: return
+        val data = pcmCache[currentStyle] ?: return
         try {
             var activeTrack = track
             if (activeTrack == null || activeTrack.state != AudioTrack.STATE_INITIALIZED) {
@@ -148,7 +172,6 @@ class RetroMusicPlayer {
                 activeTrack.play()
             }
         } catch (_: Exception) {
-            // Safe fallback on environments without audio hardware (e.g. unit tests)
         }
     }
 
@@ -159,70 +182,82 @@ class RetroMusicPlayer {
                 activeTrack.pause()
             }
         } catch (_: Exception) {
-            // Safe fallback
         }
     }
 
     private fun applyVolumeLocked(activeTrack: AudioTrack?) {
         if (activeTrack == null) return
         try {
-            // Keep background music balanced cleanly beneath foreground SFX
-            val musicGain = (volume * 0.36f).coerceIn(0f, 1f)
+            val musicGain = (volume * 0.40f).coerceIn(0f, 1f)
             activeTrack.setVolume(musicGain)
         } catch (_: Exception) {
-            // Safe fallback
         }
     }
 
-    private fun generateChiptuneLoop(): ShortArray {
+    private fun generateLoopForStyle(style: MusicStyle): ShortArray {
         val steps = 64
-        val stepDurationSec = 0.135 // ~111 BPM 16th-note arcade groove (8.64s seamless loop)
+        val stepDurationSec = when (style) {
+            MusicStyle.RETRO_ARCADE -> 0.135
+            MusicStyle.ELECTRONIC -> 0.118
+            MusicStyle.NEON_CYBER -> 0.125
+        }
         val samplesPerStep = (SAMPLE_RATE * stepDurationSec).toInt()
         val totalSamples = steps * samplesPerStep
         val buffer = ShortArray(totalSamples)
 
-        // 4-bar upbeat retro minor-pentatonic chiptune lead (Hz, 0.0 = rest)
-        val leadNotes = doubleArrayOf(
-            // Bar 1 (Am)
-            440.00, 0.0, 523.25, 0.0, 659.25, 0.0, 880.00, 0.0,
-            783.99, 0.0, 659.25, 0.0, 523.25, 587.33, 659.25, 0.0,
-            // Bar 2 (F -> G)
-            698.46, 0.0, 659.25, 0.0, 587.33, 0.0, 523.25, 0.0,
-            587.33, 0.0, 659.25, 0.0, 783.99, 0.0, 659.25, 0.0,
-            // Bar 3 (Am)
-            440.00, 0.0, 523.25, 0.0, 659.25, 0.0, 880.00, 0.0,
-            987.77, 0.0, 880.00, 0.0, 783.99, 0.0, 659.25, 0.0,
-            // Bar 4 (Dm -> E -> Am)
-            698.46, 0.0, 587.33, 0.0, 659.25, 0.0, 523.25, 0.0,
-            587.33, 0.0, 493.88, 0.0, 440.00, 0.0, 392.00, 0.0
-        )
+        val leadNotes = when (style) {
+            MusicStyle.RETRO_ARCADE -> doubleArrayOf(
+                440.00, 0.0, 523.25, 0.0, 659.25, 0.0, 880.00, 0.0,
+                783.99, 0.0, 659.25, 0.0, 523.25, 587.33, 659.25, 0.0,
+                698.46, 0.0, 659.25, 0.0, 587.33, 0.0, 523.25, 0.0,
+                587.33, 0.0, 659.25, 0.0, 783.99, 0.0, 659.25, 0.0,
+                440.00, 0.0, 523.25, 0.0, 659.25, 0.0, 880.00, 0.0,
+                987.77, 0.0, 880.00, 0.0, 783.99, 0.0, 659.25, 0.0,
+                698.46, 0.0, 587.33, 0.0, 659.25, 0.0, 523.25, 0.0,
+                587.33, 0.0, 493.88, 0.0, 440.00, 0.0, 392.00, 0.0
+            )
+            MusicStyle.ELECTRONIC -> doubleArrayOf(
+                523.25, 659.25, 783.99, 659.25, 1046.50, 0.0, 783.99, 659.25,
+                587.33, 698.46, 880.00, 698.46, 987.77, 0.0, 880.00, 783.99,
+                523.25, 659.25, 783.99, 1046.50, 987.77, 0.0, 783.99, 0.0,
+                698.46, 587.33, 523.25, 587.33, 659.25, 783.99, 880.00, 0.0,
+                523.25, 659.25, 783.99, 659.25, 1046.50, 0.0, 880.00, 783.99,
+                698.46, 880.00, 1046.50, 880.00, 987.77, 783.99, 659.25, 0.0,
+                587.33, 698.46, 880.00, 987.77, 1046.50, 0.0, 880.00, 783.99,
+                659.25, 587.33, 523.25, 493.88, 440.00, 523.25, 659.25, 0.0
+            )
+            MusicStyle.NEON_CYBER -> doubleArrayOf(
+                329.63, 0.0, 493.88, 0.0, 659.25, 587.33, 493.88, 0.0,
+                392.00, 0.0, 587.33, 0.0, 783.99, 659.25, 587.33, 0.0,
+                440.00, 0.0, 659.25, 0.0, 880.00, 783.99, 659.25, 0.0,
+                392.00, 0.0, 493.88, 587.33, 659.25, 0.0, 493.88, 0.0,
+                329.63, 0.0, 493.88, 659.25, 783.99, 0.0, 659.25, 0.0,
+                440.00, 0.0, 523.25, 659.25, 880.00, 0.0, 783.99, 0.0,
+                349.23, 0.0, 440.00, 587.33, 698.46, 0.0, 587.33, 0.0,
+                392.00, 0.0, 493.88, 0.0, 587.33, 0.0, 493.88, 0.0
+            )
+        }
 
-        // Driving 8-bit octave bassline (Hz)
         val bassNotes = doubleArrayOf(
-            // Bar 1 (A2 / A3)
             110.00, 220.00, 110.00, 220.00, 110.00, 220.00, 110.00, 220.00,
             110.00, 220.00, 110.00, 220.00, 130.81, 261.63, 146.83, 293.66,
-            // Bar 2 (F2 / G2)
             87.31, 174.61, 87.31, 174.61, 87.31, 174.61, 87.31, 174.61,
             98.00, 196.00, 98.00, 196.00, 98.00, 196.00, 98.00, 196.00,
-            // Bar 3 (A2 / C3 / E3)
             110.00, 220.00, 110.00, 220.00, 130.81, 261.63, 130.81, 261.63,
             164.81, 329.63, 164.81, 329.63, 146.83, 293.66, 130.81, 261.63,
-            // Bar 4 (D2 -> G2 -> E2 -> A2)
             146.83, 293.66, 146.83, 293.66, 98.00, 196.00, 98.00, 196.00,
             82.41, 164.81, 82.41, 164.81, 110.00, 220.00, 98.00, 196.00
         )
 
         var leadPhase = 0.0
         var bassPhase = 0.0
-        var noiseSeed = 1337
+        var noiseSeed = 1337 + style.ordinal * 91
 
         for (step in 0 until steps) {
             val leadFreq = leadNotes[step]
             val bassFreq = bassNotes[step]
             val stepStart = step * samplesPerStep
 
-            // Percussion pattern per 16th-note step
             val isKick = step % 4 == 0
             val isSnare = step % 8 == 4
             val isHat = step % 2 == 1
@@ -233,16 +268,17 @@ class RetroMusicPlayer {
                 val release = ((samplesPerStep - i) / (SAMPLE_RATE * 0.014f)).coerceIn(0f, 1f)
                 val env = minOf(attack, release)
 
-                // Lead: 25% pulse wave with subtle decay
                 var leadSample = 0f
                 if (leadFreq > 0.0) {
                     leadPhase = (leadPhase + leadFreq / SAMPLE_RATE) % 1.0
-                    val pulse = if (leadPhase < 0.25) 1f else -1f
-                    val noteDecay = (1f - t * 0.35f)
-                    leadSample = pulse * 0.32f * env * noteDecay
+                    val wave = when (style) {
+                        MusicStyle.RETRO_ARCADE -> if (leadPhase < 0.25) 1f else -1f
+                        MusicStyle.ELECTRONIC -> (leadPhase.toFloat() * 2f - 1f) // sawtooth lead
+                        MusicStyle.NEON_CYBER -> sin(2.0 * PI * leadPhase).toFloat() * 0.75f + (if (leadPhase < 0.5) 0.25f else -0.25f)
+                    }
+                    leadSample = wave * 0.30f * env * (1f - t * 0.32f)
                 }
 
-                // Bass: punchy 50% square/triangle hybrid
                 var bassSample = 0f
                 if (bassFreq > 0.0) {
                     bassPhase = (bassPhase + bassFreq / SAMPLE_RATE) % 1.0
@@ -251,7 +287,6 @@ class RetroMusicPlayer {
                     bassSample = (tri * 0.6f + sq * 0.4f) * 0.34f * env * (1f - t * 0.25f)
                 }
 
-                // 8-bit Percussion
                 var drumSample = 0f
                 if (isKick && t < 0.45f) {
                     val kickFreq = 140.0 * (1.0 - t * 1.6)
@@ -261,7 +296,7 @@ class RetroMusicPlayer {
                 if (isSnare && t < 0.35f) {
                     noiseSeed = (noiseSeed * 1103515245 + 12345) and 0x7fffffff
                     val white = ((noiseSeed / 1073741824f) - 1f)
-                    drumSample += white * 0.16f * (1f - t / 0.35f)
+                    drumSample += white * 0.15f * (1f - t / 0.35f)
                 } else if (isHat && t < 0.14f) {
                     noiseSeed = (noiseSeed * 1103515245 + 12345) and 0x7fffffff
                     val white = ((noiseSeed / 1073741824f) - 1f)

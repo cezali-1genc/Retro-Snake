@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -20,9 +19,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
-import androidx.compose.material.icons.filled.TouchApp
 import androidx.compose.material3.Icon
-import androidx.compose.material3.Text
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -32,10 +29,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.example.model.ControlMode
 import com.example.model.Direction
 import com.example.model.MaterialPalette
@@ -47,57 +42,19 @@ fun RetroControls(
     onDirectionClick: (Direction) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    if (controlMode == ControlMode.SWIPE) return
+
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp),
+            .padding(vertical = 6.dp),
         contentAlignment = Alignment.Center
     ) {
         when (controlMode) {
-            ControlMode.DPAD -> {
-                MaterialDPad(
-                    palette = palette,
-                    onDirectionClick = onDirectionClick
-                )
-            }
-            ControlMode.FOUR_BUTTONS -> {
-                MaterialArcadeButtons(
-                    palette = palette,
-                    onDirectionClick = onDirectionClick
-                )
-            }
-            ControlMode.TOUCH_OVERLAY -> {
-                TouchInterfaceOverlay(
-                    controlMode = controlMode,
-                    palette = palette,
-                    onDirectionClick = onDirectionClick
-                )
-            }
-            ControlMode.SWIPE -> {
-                Row(
-                    modifier = Modifier
-                        .padding(8.dp)
-                        .background(palette.surfaceContainer, RoundedCornerShape(12.dp))
-                        .border(1.dp, palette.outlineVariant, RoundedCornerShape(12.dp))
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.TouchApp,
-                        contentDescription = "Swipe Kontrol",
-                        tint = palette.primary,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "EKRANI KAYDIRARAK YÖNLENDİRİN",
-                        color = palette.secondary,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            }
+            ControlMode.DPAD -> MaterialDPad(palette = palette, onDirectionClick = onDirectionClick)
+            ControlMode.FOUR_BUTTONS -> MaterialArcadeButtons(palette = palette, onDirectionClick = onDirectionClick)
+            ControlMode.JOYSTICK -> VirtualJoystick(palette = palette, onDirectionChange = onDirectionClick)
+            ControlMode.SWIPE -> {}
         }
     }
 }
@@ -108,13 +65,12 @@ fun MaterialDPad(
     onDirectionClick: (Direction) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val buttonSize = 56.dp
+    val buttonSize = 52.dp
 
     Column(
         modifier = modifier.testTag("retro_dpad"),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // UP
         M3ControlButton(
             icon = Icons.Default.ArrowUpward,
             contentDesc = "Yukarı",
@@ -128,7 +84,6 @@ fun MaterialDPad(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Center
         ) {
-            // LEFT
             M3ControlButton(
                 icon = Icons.AutoMirrored.Filled.ArrowBack,
                 contentDesc = "Sol",
@@ -138,7 +93,6 @@ fun MaterialDPad(
                 onClick = { onDirectionClick(Direction.LEFT) }
             )
 
-            // Center dummy core
             Box(
                 modifier = Modifier
                     .size(buttonSize)
@@ -147,12 +101,11 @@ fun MaterialDPad(
             ) {
                 Box(
                     modifier = Modifier
-                        .size(14.dp)
+                        .size(12.dp)
                         .background(palette.primary, CircleShape)
                 )
             }
 
-            // RIGHT
             M3ControlButton(
                 icon = Icons.AutoMirrored.Filled.ArrowForward,
                 contentDesc = "Sağ",
@@ -163,7 +116,6 @@ fun MaterialDPad(
             )
         }
 
-        // DOWN
         M3ControlButton(
             icon = Icons.Default.ArrowDownward,
             contentDesc = "Aşağı",
@@ -189,8 +141,8 @@ private fun M3ControlButton(
             .size(size)
             .shadow(4.dp, RoundedCornerShape(14.dp))
             .clip(RoundedCornerShape(14.dp))
-            .background(palette.primaryContainer)
-            .border(1.5.dp, palette.primary.copy(alpha = 0.4f), RoundedCornerShape(14.dp))
+            .background(palette.primaryContainer.copy(alpha = 0.92f))
+            .border(1.5.dp, palette.primary.copy(alpha = 0.55f), RoundedCornerShape(14.dp))
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = ripple(color = palette.onPrimaryContainer),
@@ -203,7 +155,7 @@ private fun M3ControlButton(
             imageVector = icon,
             contentDescription = contentDesc,
             tint = palette.onPrimaryContainer,
-            modifier = Modifier.size(28.dp)
+            modifier = Modifier.size(26.dp)
         )
     }
 }
@@ -214,18 +166,17 @@ fun MaterialArcadeButtons(
     onDirectionClick: (Direction) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val buttonSize = 58.dp
+    val buttonSize = 54.dp
 
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 24.dp)
+            .padding(horizontal = 20.dp)
             .testTag("arcade_buttons"),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Left & Right thumb group
-        Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             M3ControlButton(
                 icon = Icons.AutoMirrored.Filled.ArrowBack,
                 contentDesc = "Sol",
@@ -244,8 +195,7 @@ fun MaterialArcadeButtons(
             )
         }
 
-        // Up & Down thumb group
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             M3ControlButton(
                 icon = Icons.Default.ArrowUpward,
                 contentDesc = "Yukarı",

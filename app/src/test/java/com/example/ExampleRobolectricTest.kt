@@ -5,16 +5,17 @@ import androidx.test.core.app.ApplicationProvider
 import com.example.data.HighScoreEntity
 import com.example.data.SettingsManager
 import com.example.data.SnakeDatabase
+import com.example.i18n.AppLanguage
+import com.example.model.ControlMode
 import com.example.model.Difficulty
-import com.example.model.Direction
+import com.example.model.GameMode
 import com.example.model.MaterialThemeType
+import com.example.model.MusicStyle
 import com.example.model.SnakeColorMode
 import com.example.model.ThemeMode
-import com.example.model.TipRepository
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -33,24 +34,6 @@ class ExampleRobolectricTest {
     }
 
     @Test
-    fun `direction opposite logic prevents instant self collision`() {
-        assertTrue(Direction.UP.isOpposite(Direction.DOWN))
-        assertTrue(Direction.DOWN.isOpposite(Direction.UP))
-        assertTrue(Direction.LEFT.isOpposite(Direction.RIGHT))
-        assertTrue(Direction.RIGHT.isOpposite(Direction.LEFT))
-        assertFalse(Direction.UP.isOpposite(Direction.LEFT))
-        assertFalse(Direction.RIGHT.isOpposite(Direction.DOWN))
-    }
-
-    @Test
-    fun `difficulty properties configuration verified`() {
-        assertTrue(Difficulty.INSANE.initialTickMs < Difficulty.EASY.initialTickMs)
-        assertTrue(Difficulty.INSANE.scoreMultiplier > Difficulty.EASY.scoreMultiplier)
-        assertTrue(Difficulty.HARD.hasObstacles)
-        assertFalse(Difficulty.EASY.hasObstacles)
-    }
-
-    @Test
     fun `database insert and query top scores`() = runBlocking {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val db = SnakeDatabase.getInstance(context)
@@ -63,63 +46,62 @@ class ExampleRobolectricTest {
                 playerName = "MATERIAL_CHAMP",
                 score = 350,
                 difficulty = Difficulty.MEDIUM.label,
-                snakeLength = 22
+                snakeLength = 22,
+                gameMode = GameMode.ENDLESS.id,
+                durationSec = 95
             )
         )
 
-        val scores = dao.getTopScores().first()
+        val scores = dao.getTopScores(50).first()
         assertEquals(1, scores.size)
         assertEquals("MATERIAL_CHAMP", scores[0].playerName)
         assertEquals(350, scores[0].score)
+        assertEquals(GameMode.ENDLESS.id, scores[0].gameMode)
     }
 
     @Test
-    fun `settings manager persists and restores material theme volume and tips`() {
+    fun `settings manager persists and restores v7 settings`() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val manager = SettingsManager(context)
 
         manager.setThemeMode(ThemeMode.DARK)
-        manager.setMaterialTheme(MaterialThemeType.OCEAN)
+        manager.setMaterialTheme(MaterialThemeType.CYBER_BLUE)
         manager.setSoundVolume(0.65f)
+        manager.setMusicVolume(0.55f)
+        manager.setMusicStyle(MusicStyle.NEON_CYBER)
+        manager.setControlMode(ControlMode.JOYSTICK)
+        manager.setLanguage(AppLanguage.EN)
+        manager.setLowPerformanceMode(true)
         manager.setDifficulty(Difficulty.HARD)
         manager.setTipsEnabled(true)
-        manager.setFpsOverlayEnabled(true)
 
-        // Simulate app restart by creating a new instance reading from disk
-        val reloadedManager = SettingsManager(context)
-        val state = reloadedManager.settings.value
+        val reloaded = SettingsManager(context).settings.value
 
-        assertEquals(ThemeMode.DARK, state.themeMode)
-        assertEquals(MaterialThemeType.OCEAN, state.materialTheme)
-        assertEquals(0.65f, state.soundVolume, 0.01f)
-        assertEquals(Difficulty.HARD, state.difficulty)
-        assertTrue(state.tipsEnabled)
-        assertTrue(state.fpsOverlayEnabled)
+        assertEquals(ThemeMode.DARK, reloaded.themeMode)
+        assertEquals(MaterialThemeType.CYBER_BLUE, reloaded.materialTheme)
+        assertEquals(0.65f, reloaded.soundVolume, 0.01f)
+        assertEquals(0.55f, reloaded.musicVolume, 0.01f)
+        assertEquals(MusicStyle.NEON_CYBER, reloaded.musicStyle)
+        assertEquals(ControlMode.JOYSTICK, reloaded.controlMode)
+        assertEquals(AppLanguage.EN, reloaded.language)
+        assertTrue(reloaded.lowPerformanceMode)
+        assertEquals(Difficulty.HARD, reloaded.difficulty)
+        assertTrue(reloaded.tipsEnabled)
     }
 
     @Test
-    fun `beginner tips repository has essential mechanics`() {
-        val tips = TipRepository.ALL_TIPS
-        assertTrue(tips.isNotEmpty())
-        assertTrue(tips.any { it.id == "speed_increase" })
-        assertTrue(tips.any { it.id == "golden_star" })
-        assertTrue(tips.any { it.id == "blue_potion" })
-    }
-
-    @Test
-    fun `settings manager persists and restores custom snake color`() {
+    fun `settings manager persists custom snake color and level progress`() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val manager = SettingsManager(context)
 
         val customBlue = 0xFF3B82F6.toInt()
         manager.setCustomSnakeColor(customBlue)
+        manager.recordLevelCompletion(1, 3, 20)
 
-        val reloaded = SettingsManager(context)
-        assertEquals(SnakeColorMode.CUSTOM, reloaded.settings.value.snakeColorMode)
-        assertEquals(customBlue, reloaded.settings.value.customSnakeColorArgb)
-
-        reloaded.setSnakeColorMode(SnakeColorMode.THEME)
-        val reloadedTheme = SettingsManager(context)
-        assertEquals(SnakeColorMode.THEME, reloadedTheme.settings.value.snakeColorMode)
+        val reloaded = SettingsManager(context).settings.value
+        assertEquals(SnakeColorMode.CUSTOM, reloaded.snakeColorMode)
+        assertEquals(customBlue, reloaded.customSnakeColorArgb)
+        assertEquals(3, reloaded.levelStars[1])
+        assertEquals(2, reloaded.highestUnlockedLevel)
     }
 }

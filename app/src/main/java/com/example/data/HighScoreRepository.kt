@@ -6,6 +6,12 @@ class HighScoreRepository(private val dao: HighScoreDao) {
 
     fun getTopScores(limit: Int = 50): Flow<List<HighScoreEntity>> = dao.getTopScores(limit)
 
+    fun getTopScoresSince(sinceTimestamp: Long, limit: Int = 50): Flow<List<HighScoreEntity>> =
+        dao.getTopScoresSince(sinceTimestamp, limit)
+
+    fun getTopScoresByMode(mode: String, limit: Int = 50): Flow<List<HighScoreEntity>> =
+        dao.getTopScoresByMode(mode, limit)
+
     fun getTopScoresByDifficulty(difficulty: String, limit: Int = 50): Flow<List<HighScoreEntity>> =
         dao.getTopScoresByDifficulty(difficulty, limit)
 
@@ -18,14 +24,18 @@ class HighScoreRepository(private val dao: HighScoreDao) {
         playerName: String,
         score: Int,
         difficulty: String,
-        snakeLength: Int
+        snakeLength: Int,
+        gameMode: String = "ENDLESS",
+        durationSec: Int = 0
     ): Long {
         return dao.insertScore(
             HighScoreEntity(
                 playerName = playerName.ifBlank { "ANONYMOUS" },
                 score = score,
                 difficulty = difficulty,
-                snakeLength = snakeLength
+                snakeLength = snakeLength,
+                gameMode = gameMode,
+                durationSec = durationSec
             )
         )
     }

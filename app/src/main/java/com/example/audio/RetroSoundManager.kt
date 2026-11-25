@@ -16,9 +16,8 @@ import kotlin.math.sin
 
 /**
  * Procedural 8-bit Retro Audio & Haptics Engine.
- * Generates classic NES/GameBoy square-wave chirps, arpeggios, and noise effects
- * in real-time with zero external audio assets, ensuring ultra-lightweight APK size
- * and instant offline playback.
+ * Generates classic NES/GameBoy square-wave chirps, arpeggios, portal warps,
+ * level fanfares, and noise effects in real-time with zero external audio assets.
  */
 class RetroSoundManager(private val context: Context) {
 
@@ -38,25 +37,18 @@ class RetroSoundManager(private val context: Context) {
         }
     }
 
-    /**
-     * Classic 8-bit bite sound + crisp short eat vibration
-     */
     fun playEat(combo: Int = 1) {
-        vibrateOneShot(durationMs = 28L, amplitude = 150)
+        vibrateOneShot(durationMs = 26L, amplitude = 150)
         if (!isSoundEnabled || soundVolume <= 0.01f) return
         val pitchBoost = ((combo - 1).coerceIn(0, 4)) * 75.0
         scope.launch {
             val sampleRate = 22050
-            val tone1 = generateSquareWave(sampleRate, frequency = 520.0 + pitchBoost, durationMs = 42, volume = 0.5f * soundVolume)
-            val tone2 = generateSquareWave(sampleRate, frequency = 780.0 + pitchBoost * 1.2, durationMs = 58, volume = 0.6f * soundVolume)
-            val combined = tone1 + tone2
-            playPcm(combined, sampleRate)
+            val tone1 = generateSquareWave(sampleRate, frequency = 520.0 + pitchBoost, durationMs = 40, volume = 0.5f * soundVolume)
+            val tone2 = generateSquareWave(sampleRate, frequency = 780.0 + pitchBoost * 1.2, durationMs = 56, volume = 0.6f * soundVolume)
+            playPcm(tone1 + tone2, sampleRate)
         }
     }
 
-    /**
-     * Special food / golden apple sound + lively double-pulse vibration
-     */
     fun playBonus() {
         vibrateWaveform(longArrayOf(0L, 24L, 36L, 36L), intArrayOf(0, 170, 0, 220))
         if (!isSoundEnabled || soundVolume <= 0.01f) return
@@ -65,14 +57,10 @@ class RetroSoundManager(private val context: Context) {
             val t1 = generateSquareWave(sampleRate, frequency = 587.0, durationMs = 40, volume = 0.6f * soundVolume)
             val t2 = generateSquareWave(sampleRate, frequency = 740.0, durationMs = 40, volume = 0.65f * soundVolume)
             val t3 = generateSquareWave(sampleRate, frequency = 880.0, durationMs = 80, volume = 0.7f * soundVolume)
-            val combined = t1 + t2 + t3
-            playPcm(combined, sampleRate)
+            playPcm(t1 + t2 + t3, sampleRate)
         }
     }
 
-    /**
-     * Rainbow Gem Fever mode fanfare + celebratory haptic pulse
-     */
     fun playFever() {
         vibrateWaveform(longArrayOf(0L, 25L, 30L, 35L, 30L, 45L), intArrayOf(0, 160, 0, 200, 0, 255))
         if (!isSoundEnabled || soundVolume <= 0.01f) return
@@ -86,16 +74,48 @@ class RetroSoundManager(private val context: Context) {
         }
     }
 
-    /**
-     * Subtle short haptic pulse when crossing screen boundary walls
-     */
-    fun playWallCross() {
-        vibrateOneShot(durationMs = 18L, amplitude = 110)
+    fun playPortal() {
+        vibrateOneShot(durationMs = 32L, amplitude = 175)
+        if (!isSoundEnabled || soundVolume <= 0.01f) return
+        scope.launch {
+            val sampleRate = 22050
+            val t1 = generateSquareWave(sampleRate, frequency = 392.0, durationMs = 35, volume = 0.5f * soundVolume)
+            val t2 = generateSquareWave(sampleRate, frequency = 659.25, durationMs = 35, volume = 0.55f * soundVolume)
+            val t3 = generateSquareWave(sampleRate, frequency = 987.77, durationMs = 55, volume = 0.6f * soundVolume)
+            playPcm(t1 + t2 + t3, sampleRate)
+        }
     }
 
-    /**
-     * Crash / Wall / Game Over sound + distinct impact vibration
-     */
+    fun playShieldBreak() {
+        vibrateWaveform(longArrayOf(0L, 40L, 25L, 50L), intArrayOf(0, 210, 0, 180))
+        if (!isSoundEnabled || soundVolume <= 0.01f) return
+        scope.launch {
+            val sampleRate = 22050
+            val t1 = generateSquareWave(sampleRate, frequency = 440.0, durationMs = 55, volume = 0.65f * soundVolume)
+            val t2 = generateSquareWave(sampleRate, frequency = 311.13, durationMs = 85, volume = 0.55f * soundVolume)
+            playPcm(t1 + t2, sampleRate)
+        }
+    }
+
+    fun playLevelComplete() {
+        vibrateWaveform(longArrayOf(0L, 30L, 35L, 45L, 35L, 70L), intArrayOf(0, 180, 0, 210, 0, 255))
+        if (!isSoundEnabled || soundVolume <= 0.01f) return
+        scope.launch {
+            val sampleRate = 22050
+            val t1 = generateSquareWave(sampleRate, frequency = 523.25, durationMs = 55, volume = 0.6f * soundVolume)
+            val t2 = generateSquareWave(sampleRate, frequency = 659.25, durationMs = 55, volume = 0.65f * soundVolume)
+            val t3 = generateSquareWave(sampleRate, frequency = 783.99, durationMs = 55, volume = 0.7f * soundVolume)
+            val t4 = generateSquareWave(sampleRate, frequency = 1046.50, durationMs = 130, volume = 0.75f * soundVolume)
+            playPcm(t1 + t2 + t3 + t4, sampleRate)
+        }
+    }
+
+    fun playWin() = playLevelComplete()
+
+    fun playWallCross() {
+        vibrateOneShot(durationMs = 16L, amplitude = 100)
+    }
+
     fun playCrash() {
         vibrateWaveform(longArrayOf(0L, 65L, 35L, 110L), intArrayOf(0, 240, 0, 255))
         if (!isSoundEnabled || soundVolume <= 0.01f) return
@@ -121,27 +141,21 @@ class RetroSoundManager(private val context: Context) {
         }
     }
 
-    /**
-     * Subtle retro movement tick
-     */
     fun playMoveTick() {
         if (!isSoundEnabled || soundVolume <= 0.01f) return
         scope.launch {
             val sampleRate = 22050
-            val tick = generateSquareWave(sampleRate, frequency = 1200.0, durationMs = 12, volume = 0.15f * soundVolume)
+            val tick = generateSquareWave(sampleRate, frequency = 1150.0, durationMs = 10, volume = 0.12f * soundVolume)
             playPcm(tick, sampleRate)
         }
     }
 
-    /**
-     * UI button press click
-     */
     fun playButtonClick() {
         vibrateOneShot(durationMs = 16L, amplitude = 90)
         if (!isSoundEnabled || soundVolume <= 0.01f) return
         scope.launch {
             val sampleRate = 22050
-            val click = generateSquareWave(sampleRate, frequency = 880.0, durationMs = 25, volume = 0.4f * soundVolume)
+            val click = generateSquareWave(sampleRate, frequency = 880.0, durationMs = 24, volume = 0.38f * soundVolume)
             playPcm(click, sampleRate)
         }
     }
@@ -200,7 +214,6 @@ class RetroSoundManager(private val context: Context) {
             track.stop()
             track.release()
         } catch (_: Exception) {
-            // AudioTrack fallback
         }
     }
 
@@ -218,7 +231,6 @@ class RetroSoundManager(private val context: Context) {
                 }
             }
         } catch (_: Exception) {
-            // Safe fallback
         }
     }
 
@@ -239,7 +251,6 @@ class RetroSoundManager(private val context: Context) {
                 }
             }
         } catch (_: Exception) {
-            // Safe fallback
         }
     }
 }

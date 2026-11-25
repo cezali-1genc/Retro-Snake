@@ -4,7 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,7 +20,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Email
-import androidx.compose.material.icons.filled.Smartphone
+import androidx.compose.material.icons.filled.Language
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -64,12 +64,10 @@ fun AboutDialog(
             }
         },
         dismissButton = {
-            TextButton(
-                onClick = { openEmail(context, "cezali.1genc@gmail.com") }
-            ) {
+            TextButton(onClick = { openEmail(context, "cezali.1genc@gmail.com") }) {
                 Icon(imageVector = Icons.Default.Email, contentDescription = null, modifier = Modifier.size(16.dp))
                 Spacer(modifier = Modifier.width(6.dp))
-                Text(text = "E-POSTA GÖNDER", fontWeight = FontWeight.Bold, color = palette.primary)
+                Text(text = "E-POSTA", fontWeight = FontWeight.Bold, color = palette.primary)
             }
         },
         title = {
@@ -104,7 +102,6 @@ fun AboutDialog(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                // Developer Card
                 Card(
                     shape = RoundedCornerShape(16.dp),
                     colors = CardDefaults.cardColors(containerColor = palette.surfaceContainerHigh),
@@ -114,26 +111,33 @@ fun AboutDialog(
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(16.dp),
+                            .padding(14.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text(
-                            text = "SERHAT GÜNER",
-                            fontSize = 20.sp,
+                            text = "CEZALI 1GENÇ [S-G] ꪜ",
+                            fontSize = 18.sp,
                             fontWeight = FontWeight.ExtraBold,
                             color = palette.primary,
-                            letterSpacing = 1.sp
+                            textAlign = TextAlign.Center
                         )
-
+                        Spacer(modifier = Modifier.height(2.dp))
                         Text(
-                            text = "MOBİL UYGULAMA & WEB GELİŞTİRİCİ",
+                            text = "Yazılım ve Teknoloji Geliştirici",
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
                             color = palette.secondary,
                             textAlign = TextAlign.Center
                         )
+                        Text(
+                            text = "Android • iOS • Web • Yapay Zekâ",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = palette.outline,
+                            textAlign = TextAlign.Center
+                        )
 
-                        Spacer(modifier = Modifier.height(12.dp))
+                        Spacer(modifier = Modifier.height(10.dp))
 
                         Box(
                             modifier = Modifier
@@ -144,7 +148,7 @@ fun AboutDialog(
                         ) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text(
-                                    text = "CEBİNİZDEKİ TEKNOLOJİYİ KODLAYIN",
+                                    text = "Marka: MσdLU 1αPK (ꪜ)",
                                     fontSize = 12.sp,
                                     fontWeight = FontWeight.ExtraBold,
                                     color = palette.primary,
@@ -152,46 +156,64 @@ fun AboutDialog(
                                 )
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Text(
-                                    text = "ANDROID & iOS İÇİN AKILLI ÇÖZÜMLER",
+                                    text = "Sürüm: v${BuildConfig.VERSION_NAME} (Build ${BuildConfig.VERSION_CODE})",
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.SemiBold,
-                                    color = palette.secondary,
-                                    textAlign = TextAlign.Center
+                                    color = palette.secondary
                                 )
                             }
                         }
 
-                        Spacer(modifier = Modifier.height(12.dp))
+                        Spacer(modifier = Modifier.height(10.dp))
 
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier
+                                .fillMaxWidth()
                                 .clip(RoundedCornerShape(8.dp))
-                                .background(palette.primaryContainer.copy(alpha = 0.5f))
-                                .padding(horizontal = 10.dp, vertical = 6.dp)
+                                .background(palette.primaryContainer.copy(alpha = 0.45f))
+                                .clickable { openEmail(context, "cezali.1genc@gmail.com") }
+                                .padding(horizontal = 10.dp, vertical = 7.dp)
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.Email,
-                                contentDescription = null,
-                                tint = palette.primary,
-                                modifier = Modifier.size(16.dp)
-                            )
+                            Icon(imageVector = Icons.Default.Email, contentDescription = null, tint = palette.primary, modifier = Modifier.size(15.dp))
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
-                                text = "İLETİŞİM İÇİN: CEZALİ.1GENC@GMAİL.COM",
+                                text = "cezali.1genc@gmail.com",
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = palette.primary
                             )
                         }
 
-                        Spacer(modifier = Modifier.height(8.dp))
+                        Spacer(modifier = Modifier.height(6.dp))
+
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(palette.primaryContainer.copy(alpha = 0.45f))
+                                .clickable { openWeb(context, "https://www.modlu-1apk.gt.tc") }
+                                .padding(horizontal = 10.dp, vertical = 7.dp)
+                        ) {
+                            Icon(imageVector = Icons.Default.Language, contentDescription = null, tint = palette.primary, modifier = Modifier.size(15.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "www.modlu-1apk.gt.tc",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = palette.primary
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(10.dp))
 
                         Text(
-                            text = "Sürüm ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})",
-                            fontSize = 11.sp,
+                            text = "© 2026 Cᴇᴢᴀʟı 1Gᴇɴç ꪜ – Tüm Hakları Saklıdır.",
+                            fontSize = 10.sp,
                             fontWeight = FontWeight.SemiBold,
-                            color = palette.outline
+                            color = palette.outline,
+                            textAlign = TextAlign.Center
                         )
                     }
                 }
@@ -206,10 +228,16 @@ private fun openEmail(context: Context, emailAddress: String) {
     try {
         val intent = Intent(Intent.ACTION_SENDTO).apply {
             data = Uri.parse("mailto:$emailAddress")
-            putExtra(Intent.EXTRA_SUBJECT, "Material Snake - İletişim")
+            putExtra(Intent.EXTRA_SUBJECT, "Retro Snake - İletişim")
         }
         context.startActivity(intent)
     } catch (_: Exception) {
-        // Fallback
+    }
+}
+
+private fun openWeb(context: Context, url: String) {
+    try {
+        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+    } catch (_: Exception) {
     }
 }

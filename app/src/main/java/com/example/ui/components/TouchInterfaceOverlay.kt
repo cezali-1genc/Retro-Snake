@@ -46,7 +46,7 @@ fun TouchInterfaceOverlay(
     onDirectionClick: (Direction) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    if (controlMode != ControlMode.TOUCH_OVERLAY) return
+    if (controlMode != ControlMode.FOUR_BUTTONS) return
 
     val buttonSize = 52.dp
 

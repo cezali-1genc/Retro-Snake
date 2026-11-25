@@ -24,6 +24,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Leaderboard
 import androidx.compose.material.icons.filled.Pause
@@ -62,9 +63,12 @@ fun QuickControlFab(
     expanded: Boolean,
     status: GameStatus,
     palette: MaterialPalette,
+    unlockedBadgeCount: Int = 0,
+    totalBadgeCount: Int = 6,
     onToggleExpand: () -> Unit,
     onPauseToggle: () -> Unit,
     onRestart: () -> Unit,
+    onOpenAchievements: () -> Unit = {},
     onOpenLeaderboard: () -> Unit,
     onOpenSettings: () -> Unit,
     onOpenAbout: () -> Unit,
@@ -107,6 +111,13 @@ fun QuickControlFab(
                         palette = palette,
                         testTag = "quick_restart_button",
                         onClick = onRestart
+                    )
+                    QuickActionPill(
+                        icon = Icons.Default.EmojiEvents,
+                        label = "Rozetler ($unlockedBadgeCount/$totalBadgeCount)",
+                        palette = palette,
+                        testTag = "achievements_button",
+                        onClick = onOpenAchievements
                     )
                     QuickActionPill(
                         icon = Icons.Default.Leaderboard,

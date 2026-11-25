@@ -11,5 +11,7 @@ data class HighScoreEntity(
     val score: Int,
     val difficulty: String,
     val snakeLength: Int,
-    val timestamp: Long = System.currentTimeMillis()
+    val timestamp: Long = System.currentTimeMillis(),
+    val gameMode: String = "ENDLESS",
+    val durationSec: Int = 0
 )

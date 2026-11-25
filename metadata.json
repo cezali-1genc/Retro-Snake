@@ -1,6 +1,6 @@
 {
   "name": "Retro Snake",
-  "description": "Retro 8-bit yılan oyunu (v3.0): dinamik hız, yerel skor tablosu, açık/koyu/sistem tema modları, ses seviyesi kontrolü ve pil optimizasyonu.",
+  "description": "Retro Snake Ultra Evolution (v7.0): 7 oyun modu, 100 seviye, 30 yılan skini, neon temalar, günlük ödüller, görevler, başarımlar ve yerel liderlik tablosu.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

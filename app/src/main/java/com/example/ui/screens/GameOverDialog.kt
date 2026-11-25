@@ -27,10 +27,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.EmojiEvents
-import androidx.compose.material.icons.filled.Leaderboard
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Replay
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.SportsEsports
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilledTonalButton
@@ -55,6 +57,9 @@ import androidx.compose.ui.unit.sp
 import com.example.BuildConfig
 import com.example.data.HighScoreEntity
 import com.example.game.SnakeGameState
+import com.example.i18n.LocalizedStrings
+import com.example.model.GameMode
+import com.example.model.GameStatus
 import com.example.model.MaterialPalette
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
@@ -64,60 +69,45 @@ fun GameOverCard(
     state: SnakeGameState,
     highScore: Int,
     topScores: List<HighScoreEntity>,
+    strings: LocalizedStrings,
     palette: MaterialPalette,
     onRestart: () -> Unit,
-    onViewLeaderboard: () -> Unit,
+    onNextLevel: () -> Unit,
+    onMainMenu: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    val isLevelVictory = state.status == GameStatus.LEVEL_COMPLETE
 
-    // Slow, smooth scale-in + fade-in + score count-up animations
     val scaleAnim = remember { Animatable(0.55f) }
     val alphaAnim = remember { Animatable(0f) }
     val backdropAlpha = remember { Animatable(0f) }
     val animatedScore = remember { Animatable(0f) }
 
-    LaunchedEffect(state.score) {
-        launch {
-            backdropAlpha.animateTo(
-                targetValue = 0.62f,
-                animationSpec = tween(durationMillis = 480, easing = FastOutSlowInEasing)
-            )
-        }
-        launch {
-            alphaAnim.animateTo(
-                targetValue = 1f,
-                animationSpec = tween(durationMillis = 450, easing = FastOutSlowInEasing)
-            )
-        }
-        launch {
-            scaleAnim.animateTo(
-                targetValue = 1f,
-                animationSpec = tween(durationMillis = 600, easing = FastOutSlowInEasing)
-            )
-        }
-        launch {
-            animatedScore.animateTo(
-                targetValue = state.score.toFloat(),
-                animationSpec = tween(durationMillis = 720, easing = FastOutSlowInEasing)
-            )
-        }
+    LaunchedEffect(state.score, state.status) {
+        launch { backdropAlpha.animateTo(0.65f, tween(420, easing = FastOutSlowInEasing)) }
+        launch { alphaAnim.animateTo(1f, tween(420, easing = FastOutSlowInEasing)) }
+        launch { scaleAnim.animateTo(1f, tween(560, easing = FastOutSlowInEasing)) }
+        launch { animatedScore.animateTo(state.score.toFloat(), tween(700, easing = FastOutSlowInEasing)) }
     }
 
-    // Centered full-screen scrim + slowly scaling Game Over dialog
+    val elapsedSeconds = (state.elapsedMs / 1000L).coerceAtLeast(0L)
+    val durationFormatted = String.format("%02d:%02d", elapsedSeconds / 60L, elapsedSeconds % 60L)
+    val accentColor = if (isLevelVictory) palette.primary else palette.foodRegular
+
     Box(
         modifier = modifier
             .fillMaxSize()
             .background(Color.Black.copy(alpha = backdropAlpha.value))
             .statusBarsPadding()
             .navigationBarsPadding()
-            .padding(20.dp),
+            .padding(18.dp),
         contentAlignment = Alignment.Center
     ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .widthIn(max = 380.dp)
+                .widthIn(max = 390.dp)
                 .graphicsLayer {
                     scaleX = scaleAnim.value
                     scaleY = scaleAnim.value
@@ -126,42 +116,53 @@ fun GameOverCard(
                 .shadow(18.dp, RoundedCornerShape(24.dp))
                 .clip(RoundedCornerShape(24.dp))
                 .background(palette.surfaceContainer)
-                .border(2.dp, palette.primary.copy(alpha = 0.45f), RoundedCornerShape(24.dp))
+                .border(2.dp, accentColor.copy(alpha = 0.55f), RoundedCornerShape(24.dp))
                 .padding(20.dp)
                 .testTag("game_over_card"),
             contentAlignment = Alignment.Center
         ) {
             Column(
                 modifier = Modifier.verticalScroll(rememberScrollState()),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Header Icon Badge
                 Box(
                     modifier = Modifier
-                        .size(48.dp)
-                        .background(palette.foodRegular.copy(alpha = 0.16f), CircleShape)
-                        .border(1.5.dp, palette.foodRegular.copy(alpha = 0.55f), CircleShape),
+                        .size(50.dp)
+                        .background(accentColor.copy(alpha = 0.18f), CircleShape)
+                        .border(1.5.dp, accentColor.copy(alpha = 0.6f), CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = Icons.Default.SportsEsports,
+                        imageVector = if (isLevelVictory) Icons.Default.EmojiEvents else Icons.Default.SportsEsports,
                         contentDescription = null,
-                        tint = palette.foodRegular,
-                        modifier = Modifier.size(26.dp)
+                        tint = accentColor,
+                        modifier = Modifier.size(28.dp)
                     )
                 }
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                // Game Over Title
                 Text(
-                    text = "OYUN BİTTİ",
-                    fontSize = 24.sp,
+                    text = if (isLevelVictory) strings.levelComplete else strings.gameOver,
+                    fontSize = 22.sp,
                     fontWeight = FontWeight.ExtraBold,
-                    color = palette.foodRegular,
-                    letterSpacing = 1.sp
+                    color = accentColor,
+                    textAlign = TextAlign.Center
                 )
+
+                if (isLevelVictory && state.gameMode == GameMode.LEVELS) {
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        for (s in 1..3) {
+                            Icon(
+                                imageVector = Icons.Default.Star,
+                                contentDescription = null,
+                                tint = if (s <= state.starsEarnedInLevel) palette.foodGolden else palette.outlineVariant,
+                                modifier = Modifier.size(28.dp)
+                            )
+                        }
+                    }
+                }
 
                 if (state.isNewHighScore) {
                     Spacer(modifier = Modifier.height(6.dp))
@@ -170,45 +171,28 @@ fun GameOverCard(
                         modifier = Modifier
                             .background(palette.primaryContainer, RoundedCornerShape(10.dp))
                             .border(1.dp, palette.primary, RoundedCornerShape(10.dp))
-                            .padding(horizontal = 12.dp, vertical = 6.dp)
+                            .padding(horizontal = 12.dp, vertical = 5.dp)
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.EmojiEvents,
-                            contentDescription = "Yeni Rekor",
-                            tint = palette.foodGolden,
-                            modifier = Modifier.size(18.dp)
-                        )
+                        Icon(imageVector = Icons.Default.EmojiEvents, contentDescription = strings.newRecord, tint = palette.foodGolden, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = "★ YENİ REKOR KAYDEDİLDİ! ★",
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = palette.primary
-                        )
+                        Text(text = "★ ${strings.newRecord} ★", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = palette.primary)
                     }
                 }
 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(10.dp))
 
-                // Hero Score Card with Count-Up Animation
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     modifier = Modifier
                         .fillMaxWidth()
                         .background(palette.surfaceContainerHigh, RoundedCornerShape(16.dp))
                         .border(1.5.dp, palette.primary.copy(alpha = 0.45f), RoundedCornerShape(16.dp))
-                        .padding(vertical = 12.dp, horizontal = 16.dp)
+                        .padding(vertical = 10.dp, horizontal = 16.dp)
                 ) {
-                    Text(
-                        text = "TOPLAM SKOR",
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = palette.outline,
-                        letterSpacing = 1.sp
-                    )
+                    Text(text = strings.score, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = palette.outline)
                     Text(
                         text = "${animatedScore.value.roundToInt()}",
-                        fontSize = 36.sp,
+                        fontSize = 34.sp,
                         fontWeight = FontWeight.ExtraBold,
                         fontFamily = FontFamily.Monospace,
                         color = palette.primary,
@@ -218,161 +202,118 @@ fun GameOverCard(
 
                 Spacer(modifier = Modifier.height(10.dp))
 
-                // Secondary stats row
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    StatBox(
-                        title = "EN YÜKSEK",
-                        value = "${highScore.coerceAtLeast(state.score)}",
-                        palette = palette,
-                        modifier = Modifier.weight(1f)
-                    )
-                    StatBox(
-                        title = "UZUNLUK",
-                        value = "${state.snake.size}",
-                        palette = palette,
-                        modifier = Modifier.weight(1f)
-                    )
-                    StatBox(
-                        title = "YEM",
-                        value = "${state.foodEatenCount}",
-                        palette = palette,
-                        modifier = Modifier.weight(1f)
-                    )
+                    StatBox(strings.highScore, "${highScore.coerceAtLeast(state.score)}", palette, Modifier.weight(1f))
+                    StatBox(strings.foodEaten, "${state.foodEatenCount}", palette, Modifier.weight(1f))
+                    StatBox(strings.duration, durationFormatted, palette, Modifier.weight(1f))
                 }
 
-                // In-Game Over High Scores List
-                if (topScores.isNotEmpty()) {
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Text(
-                        text = "EN YÜKSEK SKORLAR",
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = palette.secondary
-                    )
-                    Spacer(modifier = Modifier.height(6.dp))
-
+                // Rewards & Badges Earned
+                if (state.coinsEarnedInRun > 0 || state.sessionUnlockedBadges.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(10.dp))
                     Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .background(palette.surfaceContainerHigh, RoundedCornerShape(12.dp))
-                            .border(1.dp, palette.outlineVariant, RoundedCornerShape(12.dp))
-                            .padding(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(palette.primaryContainer.copy(alpha = 0.35f))
+                            .border(1.dp, palette.primary.copy(alpha = 0.45f), RoundedCornerShape(14.dp))
+                            .padding(10.dp)
                     ) {
-                        topScores.take(4).forEachIndexed { index, scoreItem ->
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 8.dp, vertical = 3.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    val rankColor = when (index) {
-                                        0 -> Color(0xFFFFD700)
-                                        1 -> Color(0xFFC0C0C0)
-                                        2 -> Color(0xFFCD7F32)
-                                        else -> palette.outline
-                                    }
-                                    Text(
-                                        text = "#${index + 1}",
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 12.sp,
-                                        color = rankColor
-                                    )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text(
-                                        text = scoreItem.playerName,
-                                        fontWeight = FontWeight.Medium,
-                                        fontSize = 12.sp,
-                                        color = palette.secondary
-                                    )
-                                }
-                                Text(
-                                    text = "${scoreItem.score} pts",
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 13.sp,
-                                    color = if (scoreItem.score == state.score) palette.primary else palette.secondary
-                                )
-                            }
+                        Text(
+                            text = strings.rewardsEarned,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = palette.primary
+                        )
+                        if (state.coinsEarnedInRun > 0) {
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "+${state.coinsEarnedInRun} 🪙 ${strings.coinsLabel}",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = palette.foodGolden
+                            )
+                        }
+                        state.sessionUnlockedBadges.forEach { badge ->
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "${badge.iconEmoji} ${badge.title}",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = palette.secondary
+                            )
                         }
                     }
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(14.dp))
 
-                // Play Again Button (Primary Action)
-                Button(
-                    onClick = onRestart,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(48.dp)
-                        .testTag("game_over_restart_button"),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = palette.primary,
-                        contentColor = palette.onPrimary
-                    ),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Icon(imageVector = Icons.Default.Replay, contentDescription = null)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "TEKRAR OYNA",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 15.sp
-                    )
+                if (isLevelVictory && state.gameMode == GameMode.LEVELS && state.currentLevel < 100) {
+                    Button(
+                        onClick = onNextLevel,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(48.dp)
+                            .testTag("game_over_next_level_button"),
+                        colors = ButtonDefaults.buttonColors(containerColor = palette.primary, contentColor = palette.onPrimary),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Icon(imageVector = Icons.Default.PlayArrow, contentDescription = null)
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(text = strings.nextLevel, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                } else {
+                    Button(
+                        onClick = onRestart,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(48.dp)
+                            .testTag("game_over_restart_button"),
+                        colors = ButtonDefaults.buttonColors(containerColor = palette.primary, contentColor = palette.onPrimary),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Icon(imageVector = Icons.Default.Replay, contentDescription = null)
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(text = strings.playAgain, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
                 }
 
-                Spacer(modifier = Modifier.height(10.dp))
-
-                // Secondary Actions: Share Score & Leaderboard
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     FilledTonalButton(
+                        onClick = onMainMenu,
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(48.dp)
+                            .testTag("game_over_main_menu_button"),
+                        colors = ButtonDefaults.filledTonalButtonColors(containerColor = palette.surfaceContainerHigh, contentColor = palette.secondary),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Icon(imageVector = Icons.Default.Home, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(text = strings.mainMenu, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    }
+
+                    FilledTonalButton(
                         onClick = { shareScore(context, state) },
                         modifier = Modifier
                             .weight(1f)
-                            .height(44.dp)
+                            .height(48.dp)
                             .testTag("share_score_button"),
-                        colors = ButtonDefaults.filledTonalButtonColors(
-                            containerColor = palette.surfaceContainerHigh,
-                            contentColor = palette.primary
-                        ),
+                        colors = ButtonDefaults.filledTonalButtonColors(containerColor = palette.surfaceContainerHigh, contentColor = palette.primary),
                         shape = RoundedCornerShape(12.dp)
                     ) {
                         Icon(imageVector = Icons.Default.Share, contentDescription = null, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = "PAYLAŞ",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 12.sp
-                        )
-                    }
-
-                    FilledTonalButton(
-                        onClick = onViewLeaderboard,
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(44.dp)
-                            .testTag("game_over_leaderboard_button"),
-                        colors = ButtonDefaults.filledTonalButtonColors(
-                            containerColor = palette.surfaceContainerHigh,
-                            contentColor = palette.primary
-                        ),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Icon(imageVector = Icons.Default.Leaderboard, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = "TÜM SKORLAR",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 12.sp
-                        )
+                        Text(text = "PAYLAŞ", fontWeight = FontWeight.Bold, fontSize = 12.sp)
                     }
                 }
             }
@@ -392,43 +333,27 @@ private fun StatBox(
         modifier = modifier
             .background(palette.surfaceContainerHigh, RoundedCornerShape(12.dp))
             .border(1.dp, palette.outlineVariant, RoundedCornerShape(12.dp))
-            .padding(horizontal = 8.dp, vertical = 8.dp)
+            .padding(horizontal = 6.dp, vertical = 8.dp)
     ) {
-        Text(
-            text = title,
-            fontSize = 10.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = palette.outline,
-            textAlign = TextAlign.Center
-        )
-        Text(
-            text = value,
-            fontSize = 16.sp,
-            fontWeight = FontWeight.ExtraBold,
-            fontFamily = FontFamily.Monospace,
-            color = palette.secondary,
-            textAlign = TextAlign.Center
-        )
+        Text(text = title, fontSize = 9.sp, fontWeight = FontWeight.SemiBold, color = palette.outline, textAlign = TextAlign.Center)
+        Text(text = value, fontSize = 14.sp, fontWeight = FontWeight.ExtraBold, fontFamily = FontFamily.Monospace, color = palette.secondary, textAlign = TextAlign.Center)
     }
 }
 
 private fun shareScore(context: Context, state: SnakeGameState) {
     val shareText = """
-        🐍 MATERIAL SNAKE v${BuildConfig.VERSION_NAME} 🎮
+        🐍 RETRO SNAKE v${BuildConfig.VERSION_NAME} 🎮
         ━━━━━━━━━━━━━━━━━━━━━
-        🏆 Skor: ${state.score} puan!
-        ⚡ Zorluk: ${state.difficulty.label}
-        📏 Yılan Boyu: ${state.snake.size}
-        🍎 Toplanan Yem: ${state.foodEatenCount}
+        🏆 Skor: ${state.score}
+        🕹️ Mod: ${state.gameMode.title}
+        📏 Uzunluk: ${state.snake.size}
+        🍎 Yem: ${state.foodEatenCount}
         ━━━━━━━━━━━━━━━━━━━━━
-        Bu skoru geçebilir misin?
     """.trimIndent()
-
     val sendIntent = Intent().apply {
         action = Intent.ACTION_SEND
         putExtra(Intent.EXTRA_TEXT, shareText)
         type = "text/plain"
     }
-    val shareIntent = Intent.createChooser(sendIntent, "Material Snake Skorunu Paylaş")
-    context.startActivity(shareIntent)
+    context.startActivity(Intent.createChooser(sendIntent, "Retro Snake Skorunu Paylaş"))
 }
