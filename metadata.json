@@ -1,0 +1,6 @@
+{
+  "name": "Retro Snake",
+  "description": "Retro 8-bit yılan oyunu (v3.0): dinamik hız, yerel skor tablosu, açık/koyu/sistem tema modları, ses seviyesi kontrolü ve pil optimizasyonu.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
